@@ -9,7 +9,7 @@
     this.width = width;
     this.heigth = heigth;
     //si esta en juego
-    this.playing = false;
+    this.playing = true;
     //si el juego esta terminado
     this.game_over = false;
     this.bars = [];
@@ -18,7 +18,7 @@
 
   //   //modificar los protipos de la clase para colocar los metodos
   self.Board.prototype = {
-    //retornas las barra como la pelota en el juego
+    //retorna las barra como la pelota en el juego
     get elements() {
       var elements = this.bars.map(function(bar){return bar; }); //video 5 map retornar cada uno de los elemetos modificarlo y agregar arreglo
       elements.push(this.ball);
@@ -28,7 +28,7 @@
 })();
 
 (function () {
-  self.Ball = function(x, y, radius, board) {
+  self.Ball = function (x, y, radius, board) {
     this.x = x;
     this.y = y;
     this.radius = radius;
@@ -36,15 +36,40 @@
     this.speed_x = 3;
     this.board = board;
     this.direction = 1;
+    this.bounce_angle = 0;
+    this.max_bounce_angle = Math.PI /12;
+    this.speed = 3;
 
     board.ball = this;
     this.kind = "circle";
+  };
+  self.Ball.prototype = {
+    move: function () {
+      this.x += this.speed_x * this.direction;
+      this.y += this.speed_y;
+    },
 
-      }
-      self.Ball.prototype = {
-        move: function(){
-          this.x += (this.speed_x * this.direction);
-          this.y += (this.speed_y);
+    get width(){
+      return this.radius * 2;
+    },
+    get heigth(){
+      return this.radius * 2;
+
+    },
+
+    collision: function(bar) {
+      //reacciona a la colision con una barra que recibe como paremetros
+      var relative_intersect_y = (bar.y + (bar.heigth / 2)) - this.y;
+
+      var normalized_intersect_y = relative_intersect_y / (bar.heigth / 2);
+
+      this.bounce_angle = normalized_intersect_y * this.max_bounce_angle;
+
+      this.speed_y = this.speed * -Math.sin(this.bounce_angle);
+      this.speed_x = this.speed * Math.cos(this.bounce_angle);
+
+      if (this.x > (this.board.width / 2)) this.direction = -1;
+      else this.direction = 1;
     }
   }
 })();
@@ -95,15 +120,53 @@
       for (var i = this.board.elements.length - 1; i >= 0; i--) {
         var el = this.board.elements[i];
 
-        draw(this.ctx,el);
+        draw(this.ctx, el);
       };
     },
-    play: function(){
-      this.clean();
-      this.draw();
-      this.board.ball.move();
+
+    check_collisions: function() {
+      //console.log(":#");
+      for (var i = this.board.bars.length - 1; i >= 0; i--) {
+        var bar = this.board.bars[i];
+        if (hit(bar, this.board.ball)) {
+
+          this.board.ball.collision(bar);
+        }
+      };
+    },
+
+    play: function () {
+      //console.log("holaa");
+      if (this.board.playing) {
+        this.clean();
+        this.draw();
+        this.check_collisions();
+        this.board.ball.move();
+      }
     }
   }
+function hit(a, b) {
+  //console.log(":P");
+  //revisa si a coliciona con b
+
+  var hit = false;
+      //colisiones horizontales
+  if (b.x + b.width >= a.x && b.x < a.x + a.width) {
+    //colisiones verticales
+    if (b.y + b.heigth >= a.y && b.y < a.y + a.heigth) hit = true;
+  }
+      // colision de a con b
+  if (b.x <= a.x && b.x + b.width >= a.x + a.width) {
+    if (b.y <= a.y && b.y + b.heigth >= a.y + a.heigth) hit = true;
+  }
+      //colision b con a
+  if (a.x <= b.x && a.x + a.width >= b.x + b.width) {
+    if (a.y <= b.y && a.y + a.heigth >= b.y + b.heigth) 
+    hit = true;
+  }
+  return hit;
+}
+
       //va a dibujar los elementos
   function draw(ctx,element) {
       //console.log(element);
@@ -125,43 +188,42 @@
 
 var board = new Board(800, 400);
 var bar = new Bar(20, 100, 40, 100, board);
-var bar_2 = new Bar(735,100,40,100,board);
-var canvas = document.getElementById("canvas");
+var bar2 = new Bar(735,100,40,100,board);
+var canvas = document.getElementById("pong");
 var board_view = new BoardView(canvas, board);
 var ball = new Ball(350,100, 10,board);
 
-
-
-document.addEventListener("keydown", function(event){
+document.addEventListener("keydown", function(ev){
 
   //3er video
   
-  if (event.key == 38) {
-    event.preventDefault();
+  if (ev.key === "ArrowDown") {
+    ev.preventDefault();
     bar.up();
-  } 
-  else if (event.key == 40) {
-    event.preventDefault();
+}
+else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
     bar.down();
-  }
-  else if(event.key === 87){
-    event.preventDefault();
-    bar_2.up(); //w
-  }
-  else if(event.key ===83){
-    event.preventDefault();
-    bar_2.down(); //s
-  } else if(event.key ===32){
-    event.preventDefault();
-
-  }
+}
+else if (ev.key === "s") {
+    ev.preventDefault();
+    bar2.down()
+}
+else if (ev.key === "w") {
+    ev.preventDefault();
+    bar2.up();
+}
+else if (ev.key === " ") {
+    ev.preventDefault();
+    boardView.playing = !boardView.playing;
+}
 });
+
+board_view.draw();
 
 window.requestAnimationFrame(controller);
 
-
-
-// //ejcuta todos los elementos
+//ejcuta todos los elementos
 function controller() {
   //console.log("hola mundo");
   //console.log(board);
